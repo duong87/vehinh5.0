@@ -21,8 +21,10 @@ export const geminiService = {
       
       QUY TẮC TÍNH TOÁN TỌA ĐỘ:
       1. Tọa độ (x, y) phải nằm trong khoảng (50, 50) đến (350, 350).
-         - ƯU TIÊN VẼ HÌNH LỆCH VỀ PHÍA TRÊN (y < 200) HOẶC BÊN PHẢI (x > 200) để dành chỗ cho văn bản/nhãn.
-         - Hạn chế vẽ ở góc dưới bên trái (x < 150, y > 250) trừ khi cần thiết.
+         - QUY TẮC BẮT BUỘC: Nếu đề bài nhắc đến "nửa đường tròn" hoặc "đường tròn tâm O", MỌI ĐIỂM thuộc đường tròn PHẢI nằm ở NỬA TRÊN (y <= 200). 
+         - Tâm O thường là (200, 200). Các điểm trên đường tròn phải có y < 200.
+         - Ví dụ: Đường kính AB nằm ngang thì A(50, 200), B(350, 200). Điểm C trên đường tròn thì C(x, y) với y < 200.
+         - KHÔNG ĐƯỢC lấy điểm ở nửa dưới (y > 200) cho các bài toán thông thường.
       2. Tính toán chính xác dựa trên các tính chất hình học.
       3. Nhãn điểm (label) theo chuẩn SGK Việt Nam (A, B, C, H, M, O...).
       4. labelOffsetX và labelOffsetY mặc định là 0.
