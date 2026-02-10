@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from './services/geminiService';
-import { AppStatus, GeometryData, HatchedArea } from './types';
+import { AppStatus, GeometryData } from './types';
 import DrawingCanvas from './components/DrawingCanvas';
 
 const App: React.FC = () => {
@@ -11,7 +11,7 @@ const App: React.FC = () => {
   const [geometryCode, setGeometryCode] = useState<string>('');
   const [geometryData, setGeometryData] = useState<GeometryData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pendingArea, setPendingArea] = useState<HatchedArea | null>(null);
+
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -50,7 +50,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setPendingArea(null);
         setSelectedPointId(null);
         setShowApiKeyInput(false);
       }
@@ -110,51 +109,7 @@ const App: React.FC = () => {
   };
 
   const handleCanvasClick = async (x: number, y: number) => {
-    if (!geometryData || status === AppStatus.IDENTIFYING_AREA || pendingArea) return;
-
-    try {
-      setStatus(AppStatus.IDENTIFYING_AREA);
-      const newArea = await geminiService.identifyClosedArea(geometryData, x, y, apiKey, selectedModel);
-
-      if (newArea) {
-        const exists = geometryData.hatchedAreas?.some(a =>
-          JSON.stringify(a.pointIds.sort()) === JSON.stringify(newArea.pointIds.sort())
-        );
-
-        if (!exists) {
-          setPendingArea(newArea);
-        } else {
-          setError("Vùng này đã được kẻ sọc.");
-          setTimeout(() => setError(null), 3000);
-        }
-      } else {
-        setError("Không tìm thấy vùng kín bao quanh vị trí này.");
-        setTimeout(() => setError(null), 3000);
-      }
-      setStatus(AppStatus.COMPLETED);
-    } catch (err: any) {
-      setStatus(AppStatus.COMPLETED);
-    }
-  };
-
-  const confirmHatch = () => {
-    if (pendingArea && geometryData) {
-      const updatedData = { ...geometryData };
-      if (!updatedData.hatchedAreas) updatedData.hatchedAreas = [];
-
-      updatedData.hatchedAreas.push({
-        ...pendingArea,
-        id: `area_${Date.now()}`
-      });
-
-      setGeometryData(updatedData);
-      setGeometryCode(JSON.stringify(updatedData, null, 2));
-      setPendingArea(null);
-    }
-  };
-
-  const cancelHatch = () => {
-    setPendingArea(null);
+    // Shading functionality removed
   };
 
   const downloadImage = () => {
@@ -197,7 +152,6 @@ const App: React.FC = () => {
     setGeometryCode('');
     setGeometryData(null);
     setError(null);
-    setPendingArea(null);
     setSelectedPointId(null);
   };
 
@@ -392,7 +346,7 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {geometryData && (status === AppStatus.COMPLETED || status === AppStatus.EDITING_CODE || status === AppStatus.IDENTIFYING_AREA) && (
+              {geometryData && (status === AppStatus.COMPLETED || status === AppStatus.EDITING_CODE) && (
                 <div className="w-full h-full flex items-center justify-center overflow-hidden animate-in zoom-in-90 duration-500 relative">
                   <DrawingCanvas
                     data={geometryData}
@@ -400,56 +354,16 @@ const App: React.FC = () => {
                     onCanvasClick={handleCanvasClick}
                     onPointSelect={setSelectedPointId}
                     selectedPointId={selectedPointId}
-                    isIdentifying={status === AppStatus.IDENTIFYING_AREA}
+                    isIdentifying={false}
                     interactive={status === AppStatus.COMPLETED || status === AppStatus.EDITING_CODE}
                   />
-
-                  {pendingArea && (
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-                      <div className="bg-white rounded-2xl p-6 shadow-2xl border border-indigo-100 max-w-sm w-full animate-in zoom-in-95 fade-in duration-300">
-                        <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                          <i className="fa-solid fa-wand-magic-sparkles text-indigo-600 text-xl"></i>
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Xác nhận kẻ sọc</h3>
-                        <p className="text-sm text-slate-600 text-center mb-6 leading-relaxed">
-                          Bạn xác nhận kẻ sọc vùng <span className="font-bold text-indigo-600">{pendingArea.label || pendingArea.pointIds.join('')}</span> này chứ?
-                        </p>
-                        <div className="flex gap-3">
-                          <button
-                            onClick={cancelHatch}
-                            className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 border border-slate-200"
-                          >
-                            <i className="fa-solid fa-xmark"></i> Hủy
-                          </button>
-                          <button
-                            onClick={confirmHatch}
-                            className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
-                          >
-                            <i className="fa-solid fa-check"></i> Xác nhận
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-slate-400 text-center mt-4 italic">Mẹo: Nhấn phím ESC để đóng nhanh</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {(status === AppStatus.COMPLETED || status === AppStatus.EDITING_CODE) && geometryData && !pendingArea && (
-            <div className="mt-4 grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-3 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
-                  <i className="fa-solid fa-mouse-pointer text-4xl"></i>
-                </div>
-                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm z-10">
-                  <i className="fa-solid fa-wand-sparkles text-sm"></i>
-                </div>
-                <span className="text-xs text-indigo-700 font-semibold leading-relaxed z-10">
-                  <strong>Kẻ sọc diện tích:</strong> Click vào một vùng kín trên hình vẽ để chọn kẻ sọc.
-                </span>
-              </div>
+          {(status === AppStatus.COMPLETED || status === AppStatus.EDITING_CODE) && geometryData && (
+            <div className="mt-4 grid grid-cols-1 animate-in slide-in-from-bottom-4 duration-500">
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
                   <i className="fa-solid fa-tag text-4xl"></i>
@@ -464,13 +378,13 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
+      </main >
 
       <footer className="py-6 px-4 text-center text-slate-400 text-xs border-t border-slate-200 bg-white">
         <p className="mb-1 font-semibold">ĐỖ CÔNG DƯƠNG - THCS TT GIA LỘC - 0985796031</p>
         <p>&copy; {new Date().getFullYear()} Vẽ hình bằng AI</p>
       </footer>
-    </div>
+    </div >
   );
 };
 

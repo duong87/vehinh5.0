@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { GeometryData, Point, HatchedArea, HatchedAreaSegment } from '../types';
+import { GeometryData, Point } from '../types';
 
 interface DrawingCanvasProps {
   data: GeometryData;
@@ -13,22 +13,22 @@ interface DrawingCanvasProps {
   isIdentifying?: boolean;
 }
 
-const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ 
-  data, 
-  id, 
-  interactive, 
+const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
+  data,
+  id,
+  interactive,
   selectedPointId = null,
-  onUpdatePointOffset, 
+  onUpdatePointOffset,
   onCanvasClick,
   onPointSelect,
-  isIdentifying 
+  isIdentifying
 }) => {
   const points = data.points || [];
   const lines = data.lines || [];
   const circles = data.circles || [];
   const angles = data.angles || [];
   const equalSegments = data.equalSegments || [];
-  const hatchedAreas = data.hatchedAreas || [];
+
 
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -155,12 +155,12 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const dx = p2.x - p1.x, dy = p2.y - p1.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) return null;
-    
+
     const nx = -dy / len;
     const ny = dx / len;
     const tickLen = 6;
     const spacing = 4;
-    
+
     return (
       <g key={`equal-${index}`}>
         {Array.from({ length: count }).map((_, i) => {
@@ -168,14 +168,14 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           const sx = (dx / len) * shift;
           const sy = (dy / len) * shift;
           return (
-            <line 
-              key={`tick-${index}-${i}`} 
-              x1={mx + sx + nx * tickLen} 
-              y1={my + sy + ny * tickLen} 
-              x2={mx + sx - nx * tickLen} 
-              y2={my + sy - ny * tickLen} 
-              stroke="black" 
-              strokeWidth="1.5" 
+            <line
+              key={`tick-${index}-${i}`}
+              x1={mx + sx + nx * tickLen}
+              y1={my + sy + ny * tickLen}
+              x2={mx + sx - nx * tickLen}
+              y2={my + sy - ny * tickLen}
+              stroke="black"
+              strokeWidth="1.5"
             />
           );
         })}
@@ -186,11 +186,11 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const renderAngleArc = (v: Point, p1: Point, p2: Point, isEqual: boolean = false, radius: number = 22) => {
     const a1 = Math.atan2(p1.y - v.y, p1.x - v.x);
     const a2 = Math.atan2(p2.y - v.y, p2.x - v.x);
-    
+
     let diff = a2 - a1;
     while (diff < -Math.PI) diff += 2 * Math.PI;
     while (diff > Math.PI) diff -= 2 * Math.PI;
-    
+
     const sweepFlag = diff > 0 ? 1 : 0;
     const x1 = v.x + Math.cos(a1) * radius;
     const y1 = v.y + Math.sin(a1) * radius;
@@ -223,39 +223,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     );
   };
 
-  const getHatchedAreaPath = (area: HatchedArea) => {
-    if (area.segments && area.segments.length > 0) {
-      let d = "";
-      area.segments.forEach((seg, i) => {
-        const p1 = findPoint(seg.p1);
-        const p2 = findPoint(seg.p2);
-        if (!p1 || !p2) return;
-        
-        if (i === 0) d += `M ${p1.x} ${p1.y} `;
-        
-        if (seg.type === 'line') {
-          d += `L ${p2.x} ${p2.y} `;
-        } else if (seg.type === 'arc' && seg.centerId) {
-          const center = findPoint(seg.centerId);
-          if (center) {
-            const r = Math.sqrt(Math.pow(p1.x - center.x, 2) + Math.pow(p1.y - center.y, 2));
-            const largeArc = seg.isLargeArc ? 1 : 0;
-            const sweep = seg.isClockwise ? 1 : 0;
-            d += `A ${r} ${r} 0 ${largeArc} ${sweep} ${p2.x} ${p2.y} `;
-          } else {
-            // Fallback if center not found
-            d += `L ${p2.x} ${p2.y} `;
-          }
-        }
-      });
-      return d + " Z";
-    }
 
-    // Legacy fallback using pointIds (simple polygon)
-    const pts = area.pointIds.map(pid => findPoint(pid)).filter((p): p is Point => !!p);
-    if (pts.length < 3) return "";
-    return `M ${pts.map(p => `${p.x} ${p.y}`).join(' L ')} Z`;
-  };
 
   const selectedPoint = selectedPointId ? findPoint(selectedPointId) : null;
 
@@ -269,33 +237,10 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         preserveAspectRatio="xMidYMid meet"
         onClick={handleSvgClick}
       >
-        <defs>
-          <pattern id="hatch-pattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(79, 70, 229, 0.4)" strokeWidth="1.5" />
-          </pattern>
-          <pattern id="hatch-pattern-special" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(239, 68, 68, 0.5)" strokeWidth="1.5" />
-          </pattern>
-        </defs>
-        
+
         <rect width="400" height="400" fill="white" />
-        
+
         <g transform={`translate(${transform.translate.x}, ${transform.translate.y}) scale(${transform.scale})`}>
-          {hatchedAreas.map((area) => {
-            const pathData = getHatchedAreaPath(area);
-            if (!pathData) return null;
-            
-            return (
-              <path 
-                key={area.id}
-                d={pathData}
-                fill={area.isSpecial ? "url(#hatch-pattern-special)" : "url(#hatch-pattern)"}
-                stroke={area.isSpecial ? "rgba(239, 68, 68, 0.6)" : "rgba(79, 70, 229, 0.6)"}
-                strokeWidth="1"
-                strokeDasharray="2,2"
-              />
-            );
-          })}
 
           {circles.map(c => {
             const center = findPoint(c.centerId);
@@ -343,26 +288,26 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             return (
               <g key={p.id}>
                 <circle cx={p.x} cy={p.y} r="3" fill="black" />
-                <g 
-                  className={interactive ? "cursor-pointer" : ""} 
-                  onClick={(e) => { 
+                <g
+                  className={interactive ? "cursor-pointer" : ""}
+                  onClick={(e) => {
                     if (interactive && onPointSelect) {
-                      e.stopPropagation(); 
-                      onPointSelect(p.id); 
+                      e.stopPropagation();
+                      onPointSelect(p.id);
                     }
                   }}
                 >
                   {isSelected && (
-                    <rect 
-                      x={coords.x - 12} y={coords.y - 12} width="24" height="24" 
+                    <rect
+                      x={coords.x - 12} y={coords.y - 12} width="24" height="24"
                       fill="rgba(79, 70, 229, 0.1)" stroke="#4f46e5" strokeWidth="1" rx="4"
                     />
                   )}
-                  <text 
-                    x={coords.x} y={coords.y} 
+                  <text
+                    x={coords.x} y={coords.y}
                     fontSize="16" fontFamily="serif" fontStyle="italic"
                     textAnchor="middle" dominantBaseline="middle"
-                    fill={isSelected ? "#4f46e5" : "black"} 
+                    fill={isSelected ? "#4f46e5" : "black"}
                     fontWeight={isSelected ? "bold" : "normal"}
                     stroke="white" strokeWidth="4px" paintOrder="stroke"
                   >
@@ -377,23 +322,23 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             <g transform={`translate(${selectedPoint.x}, ${selectedPoint.y})`}>
               <circle r="40" fill="rgba(255,255,255,0.7)" stroke="#cbd5e1" strokeDasharray="2,2" />
               {[
-                { dir: 'N',  dx: 0,  dy: -1, icon: '\uf077', tx: 0,   ty: -30 },
-                { dir: 'E',  dx: 1,  dy: 0,  icon: '\uf054', tx: 30,  ty: 0 },
-                { dir: 'S',  dx: 0,  dy: 1,  icon: '\uf078', tx: 0,   ty: 30 },
-                { dir: 'W',  dx: -1, dy: 0,  icon: '\uf053', tx: -30, ty: 0 }
+                { dir: 'N', dx: 0, dy: -1, icon: '\uf077', tx: 0, ty: -30 },
+                { dir: 'E', dx: 1, dy: 0, icon: '\uf054', tx: 30, ty: 0 },
+                { dir: 'S', dx: 0, dy: 1, icon: '\uf078', tx: 0, ty: 30 },
+                { dir: 'W', dx: -1, dy: 0, icon: '\uf053', tx: -30, ty: 0 }
               ].map(btn => (
-                <g 
-                  key={btn.dir} 
+                <g
+                  key={btn.dir}
                   className="cursor-pointer hover:opacity-70 transition-opacity"
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onUpdatePointOffset(selectedPoint.id, btn.dx * 2, btn.dy * 2);
                   }}
                 >
                   <circle cx={btn.tx} cy={btn.ty} r="8" fill="#4f46e5" />
-                  <text 
-                    x={btn.tx} y={btn.ty} 
-                    fontFamily="FontAwesome" fontSize="8" fill="white" 
+                  <text
+                    x={btn.tx} y={btn.ty}
+                    fontFamily="FontAwesome" fontSize="8" fill="white"
                     textAnchor="middle" dominantBaseline="central"
                   >
                     {btn.icon}
@@ -404,7 +349,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           )}
         </g>
       </svg>
-      
+
       {interactive && selectedPoint && (
         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur border border-indigo-200 px-3 py-2 rounded-lg shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 pointer-events-none">
           <p className="text-[10px] font-bold text-indigo-600 uppercase mb-1">Cân chỉnh nhãn {selectedPoint.label}</p>

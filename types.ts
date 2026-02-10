@@ -1,6 +1,6 @@
 
 // Definition of supported model types and generation parameters
-export type ModelType = 
+export type ModelType =
   | 'gemini-3-flash-preview'
   | 'gemini-3-pro-preview'
   | 'gemini-2.5-flash-image'
@@ -54,22 +54,7 @@ export interface EqualSegment {
   count: number; // Number of ticks (1, 2, or 3)
 }
 
-export interface HatchedAreaSegment {
-  p1: string;
-  p2: string;
-  type: 'line' | 'arc';
-  centerId?: string; // Only for arc
-  isLargeArc?: boolean; // For arc rendering (SVG A command)
-  isClockwise?: boolean; // For arc rendering (SVG A command sweep-flag)
-}
 
-export interface HatchedArea {
-  id: string;
-  pointIds: string[]; // Keep for compatibility/labeling
-  segments?: HatchedAreaSegment[]; // New detail for mixed boundaries (lines/arcs)
-  label?: string;     // Description of the area
-  isSpecial?: boolean; // Highlighted or special area
-}
 
 export interface DrawingStep {
   description: string;
@@ -82,14 +67,14 @@ export interface GeometryData {
   circles: Circle[];
   angles: AngleSymbol[];
   equalSegments: EqualSegment[];
-  hatchedAreas?: HatchedArea[];
+
 }
 
 export enum AppStatus {
   IDLE = 'IDLE',
   ANALYZING = 'ANALYZING',
   EDITING_CODE = 'EDITING_CODE',
-  IDENTIFYING_AREA = 'IDENTIFYING_AREA',
+
   DRAWING = 'DRAWING',
   COMPLETED = 'COMPLETED',
   ERROR = 'ERROR'
