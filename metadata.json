@@ -1,0 +1,7 @@
+{
+  "name": "THCSTTGL-Vẽ hình",
+  "description": "Ứng dụng hỗ trợ phân tích đề bài toán hình học và vẽ hình minh họa chính xác theo chuẩn SGK Việt Nam sử dụng AI Gemini.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
